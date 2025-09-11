@@ -1,0 +1,10 @@
+[project]
+name = "smart-desktop-assistant"
+version = "0.1.0"
+description = "Local desktop assistant (MVP): memory search + fuzzy ranking + learn-by-feedback"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []  # MVP 僅標準庫
+
+[tool.setuptools]
+package-dir = {"" = "src"}
