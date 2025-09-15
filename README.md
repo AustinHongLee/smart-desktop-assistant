@@ -12,6 +12,12 @@ python -m assistant GL-05 預製圖 308
 
 會列出 Top-N 結果，輸入編號即可開啟，並自動記錄學習偏置到 data/learn_bias.json。
 
+若想要圖形介面，可執行：
+```bash
+python -m assistant.gui
+```
+輸入關鍵詞後按「搜尋」，雙擊結果即可開啟對應項目，並同樣會記錄正/負向學習。
+
 
 ---
 
