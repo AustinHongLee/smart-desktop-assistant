@@ -12,6 +12,7 @@ import json
 import math
 import time
 from typing import List, Tuple, Dict, Any
+from collections.abc import Iterable
 
 # -------------------------------
 # 路徑與偏置資料位置（使用者目錄）
@@ -155,7 +156,19 @@ def _text_haystack_of(item: dict) -> str:
     path = item.get("path") or ""
     name = item.get("name") or os.path.basename(path)
     parent = os.path.dirname(path) if path else ""
-    return f"{desc} {name} {path} {parent}".lower()
+
+    raw_triggers = item.get("trigger")
+    if isinstance(raw_triggers, str):
+        triggers_iterable: List[str] = [raw_triggers]
+    elif isinstance(raw_triggers, Iterable):
+        triggers_iterable = [str(t) for t in raw_triggers if isinstance(t, str)]
+    else:
+        triggers_iterable = []
+
+    trigger_text = " ".join(triggers_iterable)
+    haystack_parts = [desc, name, path, parent, trigger_text]
+    haystack = " ".join(part for part in haystack_parts if part)
+    return haystack.lower()
 
 def _base_overlap_score(tokens: List[str], hay: str) -> float:
     score = 0.0
