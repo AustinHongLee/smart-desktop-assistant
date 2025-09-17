@@ -1,18 +1,30 @@
+# -*- coding: utf-8 -*-
+"""
+CLI 入口（與 GUI 行為一致的改良版）
+- 仍舊使用 load_memory() 讀 memory_data.json
+- 使用改良版 SmartSearch（偏置在使用者目錄、內建快取）
+- 在開啟前先做存在性檢查，降低誤學習風險
+- 成功/失敗各自記錄 O/X（正負回饋）
+"""
 from __future__ import annotations
-import argparse, sys
+import argparse
+import sys
+import os
+
 from assistant.memory.memory_manager import load_memory
 from assistant.search.smart_search import SmartSearch
 from assistant.actions.openers import run_action
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Smart Desktop Assistant (MVP)")
+    parser = argparse.ArgumentParser(description="Smart Desktop Assistant (CLI)")
     parser.add_argument("query", nargs="*", help="你要找什麼？(例如: GL-05 預製圖 308)")
-    parser.add_argument("--top", type=int, default=8, help="最多顯示幾筆")
+    parser.add_argument("--top", type=int, default=10, help="最多顯示幾筆")
     args = parser.parse_args()
 
     query = " ".join(args.query).strip()
     if not query:
-        print("請輸入關鍵詞，例如：python -m assistant GL-05 預製圖 308")
+        print("請輸入關鍵詞，例如：python -m assistant 預製圖 dwg")
         sys.exit(0)
 
     items = load_memory()
@@ -52,13 +64,25 @@ def main():
         sys.exit(1)
 
     score, chosen = results[idx - 1]
-    ok = run_action(chosen.get("action") or "open_folder", chosen.get("path") or "")
-    if ok:
+    target_path = (chosen.get("path") or "").strip()
+
+    # 先做存在性檢查（若是檔案/資料夾類情境）
+    path_exists = bool(target_path) and (os.path.isfile(target_path) or os.path.isdir(target_path))
+
+    ok = False
+    if path_exists:
+        ok = run_action(chosen.get("action") or "open_folder", target_path)
+    else:
+        # 若 path 不存在，還是嘗試讓 run_action 處理（有些 action 可能是 URL/open_url）
+        ok = run_action(chosen.get("action") or "open_folder", target_path)
+
+    if ok and (path_exists or target_path):
         engine.learn_positive(query, chosen)
         print("✅ 已開啟，並記錄為正向回饋。")
     else:
         engine.learn_negative(query, chosen)
-        print("⚠️ 開啟失敗（或路徑無效），已記錄為負向回饋。")
+        print("⚠️ 開啟失敗（或目標無效），已記錄為負向回饋。")
+
 
 if __name__ == "__main__":
     main()

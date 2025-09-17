@@ -3,7 +3,7 @@ import json, os, math, time
 from typing import List, Tuple, Dict, Any
 from .config import MAPPING_PATH
 from .semantics import tokenize, expand_query
-from .feedback import get_bias_for_item, get_bias_for_tokens
+from .feedback import load_all, get_bias_for_item_from_snapshot, get_bias_for_tokens_from_snapshot
 
 def _load_mapping() -> dict:
     if not os.path.exists(MAPPING_PATH):
@@ -45,12 +45,15 @@ class SearchEngine:
         self.mapping = _load_mapping()
         self.items = self.mapping.get("items", [])
 
-    def search(self, query: str, top_k: int = 15) -> List[Tuple[float, Dict[str, Any]]]:
+    def search(self, query: str, top_k: int = 15):
+        # 1) 先拿一份快照 → 這次搜尋過程只用這份，不重複讀檔
+        fb_snapshot = load_all()
+
         expanded = expand_query(query)
         query_tokens = tokenize(" ".join(expanded))
-        token_bias = get_bias_for_tokens(query_tokens)
+        token_bias = get_bias_for_tokens_from_snapshot(fb_snapshot, query_tokens)
 
-        scored: List[Tuple[float, Dict[str, Any]]] = []
+        scored = []
         for it in self.items:
             base = _base_score(query_tokens, it)
             if base <= 0:
@@ -59,7 +62,7 @@ class SearchEngine:
             s *= _freshness_boost(it)
             s *= _depth_penalty(it)
             s *= _ext_bonus(it, query_tokens)
-            s *= get_bias_for_item(it.get("path",""))
+            s *= get_bias_for_item_from_snapshot(fb_snapshot, it.get("path",""))
             s *= token_bias
             scored.append((s, it))
 
